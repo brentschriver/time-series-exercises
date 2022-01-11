@@ -30,9 +30,7 @@ warnings.filterwarnings("ignore")
 def get_connection(db, user=env.user, host=env.host, password=env.password):
     return f'mysql+pymysql://{user}:{password}@{host}/{db}'
 
-'''
-1. Make a function named get_titanic_data that returns the titanic data from the codeup data science database as a pandas data frame. Obtain your data from the Codeup Data Science Database.
-'''
+#******************************************** Acquire Titanic Data **************************************************#
 
 def new_titanic_data():
     '''
@@ -64,10 +62,8 @@ def get_titanic_data():
         # Return the dataframe to the calling code
     return df
 
+#******************************************** Acquire Iris Data **************************************************#
 
-'''
-2. Make a function named get_iris_data that returns the data from the iris_db on the codeup data science database as a pandas data frame. The returned data frame should include the actual name of the species in addition to the species_ids. Obtain your data from the Codeup Data Science Database.
-'''
 def new_iris_data():
     '''
     This function reads the iris data from the Codeup db into a df.
@@ -105,9 +101,8 @@ def get_iris_data():
     return df
 
 
-'''
-3. Make a function named get_telco_data that returns the data from the telco_churn database in SQL. In your SQL, be sure to join all 4 tables together, so that the resulting dataframe contains all the contract, payment, and internet service options. Obtain your data from the Codeup Data Science Database.
-'''
+#************************************************ Acquire Telco Data **************************************************#
+
 
 def new_telco_data():
     '''
@@ -145,14 +140,6 @@ def get_telco_data():
         df.to_csv('telco.csv')
         
     return df
-#******************************************** Prep the Iris Data **************************************************#
-
-def prep_iris(df):
-    df.drop(columns='species_id', inplace=True)
-    df.rename(columns={'species_name':'species'}, inplace=True)
-    dummy_df = pd.get_dummies(df['species'], drop_first=True)
-    iris = pd.concat([df, dummy_df], axis=1)
-    return iris
 
 #******************************************** Acquire and Wrangle Zillow Data **************************************************#
 # This function connects to the Codeup database.
@@ -197,179 +184,45 @@ def get_zillow_data():
         
     return zillow_df
 
-# This function removes outliers.
-def remove_outliers(df, k, col_list):
-    ''' remove outliers from a list of columns in a dataframe 
-        and return that dataframe
-    '''
+
+#******************************************** Acquire Data from https://python.zgulde.net**************************************************#
+
+def get_all(endpoint):
+    """ Read all records on all pages """
     
-    for col in col_list:
+    if endpoint not in ["sales", "items", "stores"]:
+        return "Not available from this API. Check the documentation"
+    
+    host = "https://python.zgulde.net/"
+    api = "api/v1/"
 
-        q1, q3 = df[col].quantile([.25, .75])  # get quartiles
-        
-        iqr = q3 - q1   # calculate interquartile range
-        
-        upper_bound = q3 + k * iqr   # get upper bound
-        lower_bound = q1 - k * iqr   # get lower bound
+    url = host + api + endpoint
 
-        # return dataframe without outliers
-        
-        df = df[(df[col] > lower_bound) & (df[col] < upper_bound)]
-        
+    response = requests.get(url)
+
+    if response.ok:
+        payload = response.json()["payload"]
+
+        # endpoint should be "items", "sales", or "stores"
+        contents = payload[endpoint]
+
+        # Make a dataframe of the contents
+        df = pd.DataFrame(contents)
+
+        next_page = payload["next_page"]
+
+        while next_page:
+            # Append the next_page url piece
+            url = host + next_page
+            response = requests.get(url)
+
+            payload = response.json()["payload"]
+
+            next_page = payload["next_page"]    
+            contents = payload[endpoint]
+
+            df = pd.concat([df, pd.DataFrame(contents)])
+
+            df = df.reset_index(drop=True)
+
     return df
-
-# This function
-def wrangle_zillow():
-    # Store zillow data into a variable
-    zillow_df = get_zillow_data()
-    
-    # Use these features for the 'MVP' model.
-    orig_draft_features = ['landtaxvaluedollarcnt', 'calculatedfinishedsquarefeet', 'bedroomcnt', 'bathroomcnt', 'fips']
-    orig_draft_features = zillow_df[orig_draft_features]
-    
-    # Renaming columns to make referencing easier.
-    orig_draft_features = orig_draft_features.rename(columns = {'landtaxvaluedollarcnt':'tax_value','calculatedfinishedsquarefeet':'sqft','bedroomcnt':'bedrooms','bathroomcnt':'bathrooms'})
-    
-    # Run the 'remove_outliers' function and update dataframe.
-    orig_draft_features = remove_outliers(orig_draft_features, 1.5, ['tax_value', 'sqft', 'bedrooms', 'bathrooms'])
-
-    train_validate, test = train_test_split(orig_draft_features, test_size=.2, random_state=123)
-    train, validate = train_test_split(train_validate, test_size=.3, random_state=123)
-    
-    return train, validate, test
-
-#******************************************** Function For Splitting Data **************************************************#
-
-def split_data(df):
-    '''
-    take in a DataFrame and return train, validate, and test DataFrames.
-    return train, validate, test DataFrames.
-    '''
-    train_validate, test = train_test_split(df, test_size=.2, random_state=123)
-    train, validate = train_test_split(train_validate, 
-                                       test_size=.3, 
-                                       random_state=123)
-    return train, validate, test
-
-#****************************************************************************************************************************#
-
-
-
-def add_scaled_columns(train, validate, test, scaler, columns_to_scale):
-    
-    # new column names
-    new_column_names = [c + '_scaled' for c in columns_to_scale]
-    
-    # Fit the scaler on the train
-    scaler.fit(train[columns_to_scale])
-    
-    # transform train validate and test
-    train = pd.concat([
-        train,
-        pd.DataFrame(scaler.transform(train[columns_to_scale]), columns=new_column_names, index=train.index),
-    ], axis=1)
-    
-    validate = pd.concat([
-        validate,
-        pd.DataFrame(scaler.transform(validate[columns_to_scale]), columns=new_column_names, index=validate.index),
-    ], axis=1)
-    
-    
-    test = pd.concat([
-        test,
-        pd.DataFrame(scaler.transform(test[columns_to_scale]), columns=new_column_names, index=test.index),
-    ], axis=1)
-    
-    return train, validate, test
-    
-def select_kbest(X, y, k):
-    # make the object
-    kbest = sklearn.feature_selection.SelectKBest(sklearn.feature_selection.f_regression, k=k)
-
-    # fit the object
-    kbest.fit(X, y)
-    
-    # use the object (.get_support() is that array of booleans to filter the list of column names)
-    return X.columns[kbest.get_support()].tolist()
-
-def model_evaluation(X_train_scaled, X_validate_scaled, y_train, y_validate):    
-    
-    rmse_train = mean_squared_error(y_train.tax_value,
-                                y_train.tax_value_mean) ** .5
-    rmse_validate = mean_squared_error(y_validate.tax_value, y_validate.tax_value_mean) ** (0.5) 
-    metric_df = pd.DataFrame(data=[
-            {
-                'model': 'mean_baseline', 
-                'RMSE_train': rmse_train,
-                'RMSE_validate': rmse_validate
-                }
-            ])
-    # create the model object(thing)
-    lm = LinearRegression()
-    # fit the thing
-    lm.fit(X_train_scaled, y_train.tax_value)
-    # predict train
-    # use the thing!
-    y_train['tax_value_pred_lm'] = lm.predict(X_train_scaled)
-    # evaluate: rmse
-    rmse_train = mean_squared_error(y_train.tax_value, y_train.tax_value_pred_lm) ** (1/2)
-    # predict validate
-    y_validate['tax_value_pred_lm'] = lm.predict(X_validate_scaled)
-    # evaluate: rmse
-    rmse_validate = mean_squared_error(y_validate.tax_value, y_validate.tax_value_pred_lm) ** (1/2)
-    metric_df = metric_df.append({
-    'model': 'OLS Regressor', 
-    'RMSE_train': rmse_train,
-    'RMSE_validate': rmse_validate,
-    }, ignore_index=True)
-    
-    # create the LassoLars model object
-    lars = LassoLars(alpha=1)
-
-    # fit the model to our training data
-    lars.fit(X_train_scaled, y_train.tax_value)
-
-    # predict train
-    y_train['tax_value_pred_lars'] = lars.predict(X_train_scaled)
-
-    # evaluate: rmse
-    rmse_train = mean_squared_error(y_train.tax_value, y_train.tax_value_pred_lars) ** (1/2)
-
-    # predict validate
-    y_validate['tax_value_pred_lars'] = lars.predict(X_validate_scaled)
-
-    # evaluate: rmse
-    rmse_validate = mean_squared_error(y_validate.tax_value, y_validate.tax_value_pred_lars) ** (1/2)
-
-    metric_df = metric_df.append({
-    'model': 'lasso_power1', 
-    'RMSE_train': rmse_train,
-    'RMSE_validate': rmse_validate,
-    }, ignore_index=True)
-    
-    # create the model object
-    glm = TweedieRegressor(power=1, alpha=0)
-
-
-    # fit the model to our training data. 
-    glm.fit(X_train_scaled, y_train.tax_value)
-
-    # predict train
-    y_train['tax_value_pred_glm'] = glm.predict(X_train_scaled)
-
-    # evaluate: rmse
-    rmse_train = mean_squared_error(y_train.tax_value, y_train.tax_value_pred_glm) ** (1/2)
-
-    # predict validate
-    y_validate['tax_value_pred_glm'] = glm.predict(X_validate_scaled)
-
-    # evaluate: rmse
-    rmse_validate = mean_squared_error(y_validate.tax_value, y_validate.tax_value_pred_glm) ** (1/2)
-    
-    metric_df = metric_df.append({
-    'model': 'glm_poisson', 
-    'RMSE_train': rmse_train,
-    'RMSE_validate': rmse_validate,
-    }, ignore_index=True)
-    
-    return metric_df
