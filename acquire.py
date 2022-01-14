@@ -232,11 +232,16 @@ def new_retail_data(base_url='https://python.zgulde.net'):
 
     return items_df, stores_df, sales_df
 
+<<<<<<< HEAD
 def prep_store_data():
+=======
+def get_store_data():
+>>>>>>> 403f7d241285418f3c74e3e3f67c5cd4de6c756b
     '''
     This function reads in retail data from the website if there are no csv files to pull from
     '''
     # Checks if .csv files are present. If any are missing, will acquire new data for all three datasets
+<<<<<<< HEAD
     if (os.path.isfile('items.csv') == False) or (os.path.isfile('sales.csv') == False) or (os.path.isfile('stores.csv') == False) or (os.path.isfile('all_stores.csv') == False):
         print("Data is not cached. Acquiring new data...")
         items_df, stores_df, sales_df = new_retail_data()
@@ -246,6 +251,11 @@ def prep_store_data():
 
         combined_df.to_csv("all_stores.csv", index=False)
         print('Saving all stores data to csv.')    
+=======
+    if (os.path.isfile('items.csv') == False) or (os.path.isfile('sales.csv') == False) or (os.path.isfile('stores.csv') == False):
+        print("Data is not cached. Acquiring new data...")
+        items_df, stores_df, sales_df = new_retail_data()
+>>>>>>> 403f7d241285418f3c74e3e3f67c5cd4de6c756b
     else:
         print("Data is cached. Reading from .csv files")
         items_df = pd.read_csv('items.csv')
@@ -254,6 +264,7 @@ def prep_store_data():
         print("Stores data acquired...")
         sales_df = pd.read_csv('sales.csv')
         print("Sales data acquired...")
+<<<<<<< HEAD
         combined_df = pd.read_csv('all_stores.csv')
         print("All stores data cached. Reading from .csv files")
     return combined_df
@@ -265,6 +276,13 @@ def get_store_data():
     # Sort rows by the date and then set the index as that date
     df = df.set_index("sale_date").sort_index()
     return df
+=======
+
+    combined_df = sales_df.merge(items_df, how='left', left_on='item', right_on='item_id').drop(columns=['item'])
+    combined_df = combined_df.merge(stores_df, how='left', left_on='store', right_on='store_id').drop(columns=['store'])
+    print("Acquisition complete")
+    return combined_df
+>>>>>>> 403f7d241285418f3c74e3e3f67c5cd4de6c756b
 
 def new_power_data():
     opsd = pd.read_csv("https://raw.githubusercontent.com/jenfly/opsd/master/opsd_germany_daily.csv")

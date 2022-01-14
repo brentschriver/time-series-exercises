@@ -7,5 +7,9 @@ iris.csvtelco.csv
 ClusterProject*.csv
 sales.csv
 stores.csv
+<<<<<<< HEAD
 item.csv
 all_stores.csv
+=======
+item.csv
+>>>>>>> 403f7d241285418f3c74e3e3f67c5cd4de6c756b
