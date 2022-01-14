@@ -5,3 +5,7 @@ __pycache__
 titanic.csv
 iris.csvtelco.csv
 ClusterProject*.csv
+sales.csv
+stores.csv
+item.csv
+all_stores.csv
